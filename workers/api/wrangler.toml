@@ -1,0 +1,10 @@
+name = "event-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+MONGODB_DB = "city-events"
+
+# Set secrets via: wrangler secret put MONGODB_URL
+# Set secrets via: wrangler secret put REDIS_URL

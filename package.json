@@ -1,0 +1,28 @@
+{
+  "name": "city-event-aggregator",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "workers/*"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "secrets": "bash scripts/secrets.sh",
+    "deploy": "npm run deploy -w workers/scraper -w workers/api",
+    "setup": "npm install && bash scripts/secrets.sh && npm run deploy -w workers/scraper -w workers/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:api": "npm run dev -w workers/api",
+    "dev:scraper": "npm run dev -w workers/scraper"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250501.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^3.57.0"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0",
+    "zod": "^3.23.0",
+    "hono": "^4.3.0"
+  }
+}

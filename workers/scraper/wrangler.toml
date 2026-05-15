@@ -1,0 +1,13 @@
+name = "event-scraper"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["0 */2 * * *"]
+
+[vars]
+MONGODB_DB = "city-events"
+
+# wrangler secret put MONGODB_URL
+# wrangler secret put EVENTBRITE_GUEST_COOKIE
