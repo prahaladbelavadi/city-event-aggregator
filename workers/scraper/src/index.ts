@@ -98,26 +98,28 @@ async function upsert(
   col: ReturnType<typeof eventsCollection>,
   events: NormalizedEvent[]
 ): Promise<number> {
-  let count = 0
-  for (const e of events) {
-    const now = new Date()
-    const setFields = {
-      ...e,
-      loc: e.lat !== null && e.lng !== null
-        ? { type: 'Point' as const, coordinates: [e.lng, e.lat] as [number, number] }
-        : null,
-      gcalEventId: null,
-      fetchedAt: now,
-      updatedAt: now,
-    }
-    const r = await col.updateOne(
-      { source: e.source, sourceId: e.sourceId },
-      { $set: setFields, $setOnInsert: { createdAt: now } },
-      { upsert: true }
-    )
-    if (r.upsertedCount > 0 || r.modifiedCount > 0) count++
-  }
-  return count
+  if (events.length === 0) return 0
+  const now = new Date()
+  const ops = events.map((e) => ({
+    updateOne: {
+      filter: { source: e.source, sourceId: e.sourceId },
+      update: {
+        $set: {
+          ...e,
+          loc: e.lat !== null && e.lng !== null
+            ? { type: 'Point' as const, coordinates: [e.lng, e.lat] as [number, number] }
+            : null,
+          gcalEventId: null,
+          fetchedAt: now,
+          updatedAt: now,
+        },
+        $setOnInsert: { createdAt: now },
+      },
+      upsert: true,
+    },
+  }))
+  const result = await col.bulkWrite(ops, { ordered: false })
+  return result.upsertedCount + result.modifiedCount
 }
 
 // ─── Cron handler ─────────────────────────────────────────────────────────────
@@ -130,49 +132,50 @@ export default {
     const col = eventsCollection(db)
     const log = fetchLogCollection(db)
 
-    for (const city of CITIES) {
-      // Run all three sources in parallel; a failing source doesn't block the others
-      const results = await Promise.allSettled([
-        fetchMeetup(city),
-        fetchEventbrite(city, env.EVENTBRITE_GUEST_COOKIE),
-        fetchLuma(city),
-      ])
-
-      const sources: EventSource[] = ['meetup', 'eventbrite', 'luma']
-
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i]!
-        const source = sources[i]!
+    // All cities in parallel — each city fans out to 3 sources in parallel
+    await Promise.allSettled(
+      CITIES.map(async (city) => {
+        const sources: EventSource[] = ['meetup', 'eventbrite', 'luma']
         const start = Date.now()
 
-        if (result.status === 'rejected') {
-          console.error(`${source}/${city.slug}:`, result.reason)
-          await log.insertOne({
-            source,
-            citySlug: city.slug,
-            fetchedAt: new Date(),
-            eventsFound: 0,
-            eventsUpserted: 0,
-            durationMs: Date.now() - start,
-            error: String(result.reason),
+        const results = await Promise.allSettled([
+          fetchMeetup(city),
+          fetchEventbrite(city, env.EVENTBRITE_GUEST_COOKIE),
+          fetchLuma(city),
+        ])
+
+        // Collect all log entries and write them in one bulkWrite
+        const logDocs = await Promise.all(
+          results.map(async (result, i) => {
+            const source = sources[i]!
+            if (result.status === 'rejected') {
+              console.error(`${source}/${city.slug}:`, result.reason)
+              return {
+                source,
+                citySlug: city.slug,
+                fetchedAt: new Date(),
+                eventsFound: 0,
+                eventsUpserted: 0,
+                durationMs: Date.now() - start,
+                error: String(result.reason),
+              }
+            }
+            const upserted = await upsert(col, result.value)
+            console.log(`${source}/${city.slug}: ${result.value.length} found, ${upserted} upserted`)
+            return {
+              source,
+              citySlug: city.slug,
+              fetchedAt: new Date(),
+              eventsFound: result.value.length,
+              eventsUpserted: upserted,
+              durationMs: Date.now() - start,
+              error: null,
+            }
           })
-          continue
-        }
+        )
 
-        const upserted = await upsert(col, result.value)
-        console.log(`${source}/${city.slug}: ${result.value.length} found, ${upserted} upserted`)
-        await log.insertOne({
-          source,
-          citySlug: city.slug,
-          fetchedAt: new Date(),
-          eventsFound: result.value.length,
-          eventsUpserted: upserted,
-          durationMs: Date.now() - start,
-          error: null,
-        })
-      }
-    }
-
-    await mongo.close()
+        await log.insertMany(logDocs)
+      })
+    )
   },
 } satisfies ExportedHandler<Env>

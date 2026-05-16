@@ -9,8 +9,8 @@
   "scripts": {
     "install:all": "npm install",
     "secrets": "bash scripts/secrets.sh",
-    "deploy": "npm run deploy -w workers/scraper -w workers/api",
-    "setup": "npm install && bash scripts/secrets.sh && npm run deploy -w workers/scraper -w workers/api",
+    "deploy": "npm run deploy --workspace=workers/scraper --workspace=workers/api",
+    "setup": "npm install && bash scripts/secrets.sh && npm run deploy --workspace=workers/scraper --workspace=workers/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:api": "npm run dev -w workers/api",
     "dev:scraper": "npm run dev -w workers/scraper"

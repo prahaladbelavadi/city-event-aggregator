@@ -26,6 +26,17 @@ export const CITIES: CityConfig[] = [
     lumaPlaceId: 'discplace-FQ4E58PeBMHGTKK',
   },
   {
+    slug: 'everett',
+    name: 'Everett',
+    state: 'wa',
+    lat: 47.9790,
+    lon: -122.2021,
+    radiusKm: 30,
+    timezone: 'America/Los_Angeles',
+    eventbritePlaceId: '101729883',
+    lumaPlaceId: null,
+  },
+  {
     slug: 'bellevue',
     name: 'Bellevue',
     state: 'wa',
