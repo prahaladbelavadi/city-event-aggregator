@@ -22,6 +22,7 @@ app.use('*', cors())
 app.get('/', (c) => {
   const base = new URL(c.req.url).origin
   const cities = CITIES.map((city) => city.slug)
+  const cityCount = CITIES.length
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -61,15 +62,13 @@ app.get('/', (c) => {
 <body>
 <div class="wrap">
   <h1>City Event API</h1>
-  <p class="subtitle">Aggregates events from Meetup, Eventbrite, and Luma across 10 US cities. Scraped every 2 hours.</p>
+  <p class="subtitle">Aggregates events from Meetup, Eventbrite, and Luma across ${cityCount} US cities. Scraped every 2 hours.</p>
 
   <h2>Quick links</h2>
   <div class="links">
     <a class="try" href="${base}/events?limit=10">All upcoming events</a>
+    ${CITIES.slice(0, 4).map((city) => `<a class="try" href="${base}/events?city=${city.slug}&limit=10">${city.name}</a>`).join('\n    ')}
     <a class="try" href="${base}/events?city=seattle&sort=rsvpCount&limit=10">Seattle · top RSVP</a>
-    <a class="try" href="${base}/events?city=new-york&limit=10">New York</a>
-    <a class="try" href="${base}/events?city=san-francisco&limit=10">San Francisco</a>
-    <a class="try" href="${base}/events?city=los-angeles&limit=10">Los Angeles</a>
     <a class="try" href="${base}/analytics/events-by-city">Events by city</a>
     <a class="try" href="${base}/analytics/top-rsvp">Top RSVP events</a>
     <a class="try" href="${base}/analytics/fetch-log">Scraper health</a>
